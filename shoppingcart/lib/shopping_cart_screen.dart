@@ -65,7 +65,10 @@ class _ShoppingCartScreenState extends State<ShoppingCartScreen> {
         backgroundColor: const Color(0xffF3F3F3),
         appBar: AppBar(
           leading: const Icon(Icons.supervised_user_circle_rounded),
-          title: const Text("Customer Name"),
+          title: const Text(
+            "Surriya",
+            style: TextStyle(fontSize: 20, letterSpacing: 1.0),
+          ),
           actions: [
             IconButton(
                 onPressed: () {

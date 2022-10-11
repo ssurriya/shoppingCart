@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl/intl.dart';
@@ -23,8 +25,36 @@ class _ShoppingCartScreenState extends State<ShoppingCartScreen> {
 
   List _products = [];
 
+  @override
+  void initState() {
+    super.initState();
+    _setDefaultJsonValues(ProductService.getInstance().jsonForMobilePhones, 0);
+    _setDefaultJsonValues(ProductService.getInstance().jsonForAcDetails, 1);
+    _setDefaultJsonValues(ProductService.getInstance().jsonForLaptops, 2);
+    _setDefaultJsonValues(ProductService.getInstance().jsonForHeadphones, 3);
+    _setDefaultJsonValues(ProductService.getInstance().jsonForTv, 4);
+    _getValuesFromService();
+  }
+
+  // Set the stored json value
+  _setDefaultJsonValues(String jsonValue, int index) {
+    List defaultValue = json.decode(jsonValue);
+    defaultValue.map((e) {
+      _setValueToService(e, index);
+    }).toList();
+  }
+
   String _dateFormat(DateTime date) {
     return DateFormat("dd/MM/yyyy").format(date);
+  }
+
+  _sortByDate() {
+    _products.sort(
+      (b, a) {
+        return DateTime.parse(a['manufacture_date'].toString())
+            .compareTo(DateTime.parse(b['manufacture_date'].toString()));
+      },
+    );
   }
 
   @override
@@ -48,6 +78,7 @@ class _ShoppingCartScreenState extends State<ShoppingCartScreen> {
                 setState(() {
                   _currentTabIndex = index;
                   _getValuesFromService();
+                  _sortByDate();
                 });
               },
               tabs: tabs.map((e) {
@@ -70,7 +101,8 @@ class _ShoppingCartScreenState extends State<ShoppingCartScreen> {
                     onDismissed: ((direction) {
                       _deleteProduct(_products[index]['uuid'].toString());
                       _getValuesFromService();
-                      _showToaster("Deleted Added Successfully");
+                      _sortByDate();
+                      _showToaster("Product Deleted Successfully");
                     }),
                     child: Padding(
                       padding: const EdgeInsets.all(2.0),
@@ -118,14 +150,34 @@ class _ShoppingCartScreenState extends State<ShoppingCartScreen> {
                             ),
                             children: <Widget>[
                               Padding(
-                                padding: const EdgeInsets.only(top: 8.0),
-                                child: Text(
-                                    "Manufacture Date :${_dateFormat(_products[index]['manufacture_date'])}"),
+                                padding:
+                                    const EdgeInsets.only(top: 8.0, left: 14),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      "Manufacture Date : ${_dateFormat(DateTime.parse(_products[index]['manufacture_date'].toString()))}",
+                                      style: const TextStyle(
+                                          letterSpacing: 1,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
                               ),
                               Padding(
-                                padding: const EdgeInsets.only(top: 8.0),
-                                child: Text(
-                                    "Manufacture Address :${_products[index]['manufacture_address']}"),
+                                padding:
+                                    const EdgeInsets.only(top: 8.0, left: 14.0),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      "Manufacture Address : ${_products[index]['manufacture_address']}",
+                                      style: const TextStyle(
+                                          letterSpacing: 1,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -162,9 +214,9 @@ class _ShoppingCartScreenState extends State<ShoppingCartScreen> {
     });
   }
 
-  _setValueToService(Map json) {
+  _setValueToService(Map json, int index) {
     setState(() {
-      switch (_currentTabIndex) {
+      switch (index) {
         case 0:
           ProductService.getInstance().setMobilePhones(json);
           break;
@@ -213,52 +265,60 @@ class _ShoppingCartScreenState extends State<ShoppingCartScreen> {
   final _globalKey = GlobalKey<FormState>();
   _showModalDialog() {
     showModalBottomSheet(
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(25.0))),
       context: context,
+      isScrollControlled: true,
       builder: (context) {
         return Container(
-          height: MediaQuery.of(context).size.height * 2,
-          child: Form(
-            key: _globalKey,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              child: Column(
-                children: [
-                  const Padding(
-                    padding: const EdgeInsets.all(10.0),
-                    child: Text(
-                      "Add Product",
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20.0,
-                          fontFamily: 'Inter-Medium'),
+          padding: MediaQuery.of(context).viewInsets,
+          child: SingleChildScrollView(
+            child: Form(
+              key: _globalKey,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Column(
+                  children: [
+                    const Padding(
+                      padding: const EdgeInsets.all(10.0),
+                      child: Text(
+                        "Add Product",
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20.0,
+                            fontFamily: 'Inter-Medium'),
+                      ),
                     ),
-                  ),
-                  const SizedBox(
-                    height: 10,
-                  ),
-                  _textField(_productNameController, "Product Name"),
-                  _textField(_modelNoController, "Model Number"),
-                  _textField(_addressController, "Manufacture Address"),
-                  _textField(_priceController, "Price"),
-                  ElevatedButton(
-                      onPressed: (() {
-                        if (_globalKey.currentState!.validate()) {
-                          Navigator.of(context).pop();
-                          Map json = {
-                            "uuid": const Uuid().v1(),
-                            "product_name": _productNameController.text,
-                            "model_number": _modelNoController.text,
-                            "price": _priceController.text,
-                            "manufacture_date": DateTime.now(),
-                            "manufacture_address": _addressController.text,
-                          };
-                          _setValueToService(json);
-                          _clear();
-                          _showToaster("Product Added Successfully");
-                        }
-                      }),
-                      child: const Text("Submit"))
-                ],
+                    const SizedBox(
+                      height: 10,
+                    ),
+                    _textField(_productNameController, "Product Name"),
+                    _textField(_modelNoController, "Model Number"),
+                    _textField(_addressController, "Manufacture Address"),
+                    _textField(_priceController, "Price"),
+                    ElevatedButton(
+                        onPressed: (() {
+                          if (_globalKey.currentState!.validate()) {
+                            Navigator.of(context).pop();
+                            Map json = {
+                              "uuid": const Uuid().v1(),
+                              "product_name": _productNameController.text,
+                              "model_number": _modelNoController.text,
+                              "price": _priceController.text,
+                              "manufacture_date": DateTime.now().toString(),
+                              "manufacture_address": _addressController.text,
+                            };
+                            _setValueToService(
+                                json, _currentTabIndex); // Set Product Details
+                            _clear(); // Clear Text Field
+                            _showToaster("Product Added Successfully");
+                            _getValuesFromService(); // Load Product Values.
+                            _sortByDate();
+                          }
+                        }),
+                        child: const Text("Submit"))
+                  ],
+                ),
               ),
             ),
           ),
@@ -279,6 +339,7 @@ class _ShoppingCartScreenState extends State<ShoppingCartScreen> {
       padding: const EdgeInsets.all(6.0),
       child: TextFormField(
         controller: controller,
+        autofocus: true,
         validator: (value) {
           if (value!.isEmpty) {
             return "$labelText is empty";
@@ -329,7 +390,7 @@ class _ShoppingCartScreenState extends State<ShoppingCartScreen> {
         toastLength: Toast.LENGTH_SHORT,
         gravity: ToastGravity.BOTTOM,
         timeInSecForIosWeb: 1,
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.black54,
         textColor: Colors.white,
         fontSize: 16.0);
   }
